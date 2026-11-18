@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7fb">
+  <title>Practica | Simulador de evaluaciones</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17233c;
+      --muted: #64718a;
+      --line: #e2e8f1;
+      --paper: #fff;
+      --backdrop: #f5f7fb;
+      --blue: #315ee8;
+      --blue-dark: #244bc4;
+      --blue-soft: #eef2ff;
+      --green: #16835d;
+      --green-soft: #eaf7f1;
+      --red: #b54747;
+      --red-soft: #fff0ef;
+      --shadow: 0 18px 50px rgba(29, 48, 86, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--backdrop);
+      color: var(--ink);
+      font: 16px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    button, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    .shell { width: min(940px, calc(100% - 36px)); margin: 0 auto; padding: 28px 0 60px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 36px; }
+    .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 750; letter-spacing: -.03em; }
+    .brand-mark {
+      display: grid; width: 36px; height: 36px; place-items: center;
+      border-radius: 12px; background: var(--blue); color: white; font-size: 19px;
+    }
+    .top-note { color: var(--muted); font-size: 14px; }
+    .view[hidden] { display: none; }
+    .eyebrow { color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 9px 0 12px; font-size: clamp(30px, 5vw, 46px); line-height: 1.1; letter-spacing: -.045em; }
+    h2 { margin: 0; font-size: 23px; letter-spacing: -.025em; }
+    p { margin: 0; }
+    .lead { max-width: 680px; color: var(--muted); font-size: 17px; }
+    .intro { margin: 0 0 27px; }
+    .exam-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .exam-card, .panel, .question-card, .result-card, .reserved-card {
+      border: 1px solid var(--line); border-radius: 20px; background: var(--paper); box-shadow: var(--shadow);
+    }
+    .exam-card { display: flex; min-height: 278px; flex-direction: column; padding: 25px; }
+    .card-label { color: var(--muted); font-size: 13px; font-weight: 700; }
+    .exam-card h2 { margin-top: 9px; }
+    .exam-card p { margin-top: 9px; color: var(--muted); }
+    .card-meta { margin: 19px 0 22px; color: var(--ink); font-size: 14px; font-weight: 650; }
+    .btn {
+      display: inline-flex; min-height: 46px; align-items: center; justify-content: center; gap: 8px;
+      border: 0; border-radius: 12px; padding: 0 18px; background: var(--blue); color: white;
+      font-weight: 750; transition: background .15s ease, transform .15s ease;
+    }
+    .btn:hover { background: var(--blue-dark); transform: translateY(-1px); }
+    .btn:focus-visible, .text-answer:focus-visible { outline: 3px solid #9aafff; outline-offset: 2px; }
+    .btn.secondary { border: 1px solid var(--line); background: white; color: var(--ink); }
+    .btn.secondary:hover { background: #f7f9fc; }
+    .exam-card .btn { margin-top: auto; width: 100%; }
+    .reserved-card { display: flex; gap: 14px; align-items: flex-start; margin-top: 18px; padding: 17px 20px; box-shadow: none; }
+    .reserved-icon { color: #b77c22; font-size: 20px; }
+    .reserved-card strong { display: block; font-size: 14px; }
+    .reserved-card p { margin-top: 2px; color: var(--muted); font-size: 14px; }
+    .instructions { margin-top: 22px; color: var(--muted); font-size: 14px; }
+
+    .quiz-head { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; }
+    .text-button { border: 0; padding: 7px 0; background: transparent; color: var(--muted); font-weight: 700; }
+    .text-button:hover { color: var(--blue); }
+    .progress-info { display: flex; justify-content: space-between; margin: 0 1px 8px; color: var(--muted); font-size: 13px; font-weight: 650; }
+    .progress-track { height: 7px; overflow: hidden; border-radius: 99px; background: #e6ebf4; }
+    .progress-fill { width: 0; height: 100%; border-radius: inherit; background: var(--blue); transition: width .2s ease; }
+    .question-card { margin-top: 21px; padding: clamp(22px, 4vw, 36px); }
+    .question-number { display: inline-flex; align-items: center; min-height: 28px; border-radius: 8px; padding: 2px 9px; background: var(--blue-soft); color: var(--blue); font-size: 12px; font-weight: 800; }
+    .question-card h2 { margin: 15px 0 8px; font-size: clamp(21px, 3vw, 27px); line-height: 1.3; }
+    .question-hint { margin-bottom: 22px; color: var(--muted); font-size: 14px; }
+    .answer-list { display: grid; gap: 16px; }
+    .answer-field label { display: block; margin-bottom: 7px; font-size: 14px; font-weight: 720; }
+    .text-answer {
+      display: block; width: 100%; min-height: 48px; resize: vertical; border: 1px solid #d5ddeb;
+      border-radius: 11px; padding: 12px 14px; background: #fbfcfe; color: var(--ink);
+    }
+    .text-answer::placeholder { color: #9aa5b7; }
+    textarea.text-answer { min-height: 96px; }
+    .quiz-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; }
+    .nav-right { display: flex; gap: 10px; }
+    .panel { padding: clamp(24px, 5vw, 42px); }
+    .score-row { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin: 24px 0; }
+    .score-number { color: var(--blue); font-size: 44px; font-weight: 850; letter-spacing: -.06em; line-height: 1; }
+    .score-label { margin-bottom: 2px; color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .score-copy { color: var(--muted); }
+    .score-copy strong { color: var(--ink); }
+    .scale-note { margin-top: 9px; color: var(--muted); font-size: 13px; }
+    .result-list { display: grid; gap: 13px; margin-top: 22px; }
+    .result-card { padding: 18px 20px; box-shadow: none; }
+    .result-card.correct { border-color: #b9e5d1; background: var(--green-soft); }
+    .result-card.incorrect { border-color: #f0cac6; background: var(--red-soft); }
+    .result-title { display: flex; justify-content: space-between; gap: 12px; font-weight: 750; }
+    .result-title span:last-child { white-space: nowrap; font-size: 13px; }
+    .result-card p { margin-top: 8px; color: #44516a; font-size: 14px; }
+    .review-line { margin-top: 12px; padding-top: 11px; border-top: 1px solid rgba(80, 95, 120, .15); font-size: 13px; }
+    .review-line strong { display: block; margin-bottom: 4px; }
+    .result-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 23px; }
+    .notice { margin-top: 14px; color: var(--muted); font-size: 13px; }
+
+    @media (max-width: 650px) {
+      .shell { width: min(100% - 24px, 540px); padding-top: 18px; }
+      .topbar { margin-bottom: 27px; }
+      .top-note { display: none; }
+      .exam-grid { grid-template-columns: 1fr; }
+      .exam-card { min-height: 245px; }
+      .quiz-nav { align-items: stretch; }
+      .nav-right { margin-left: auto; }
+      .quiz-nav .btn { padding: 0 13px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="#" id="home-link" aria-label="Volver al inicio">
+        <span class="brand-mark" aria-hidden="true">✓</span><span>Practica</span>
+      </a>
+      <span class="top-note">Simulador de evaluaciones · Spring, APIs y conceptos web</span>
+    </header>
+
+    <main>
+      <section id="home-view" class="view">
+        <div class="intro">
+          <div class="eyebrow">Prepárate a tu ritmo</div>
+          <h1>Practica antes de tu evaluación.</h1>
+          <p class="lead">Elige una hoja y responde las preguntas en orden. Al finalizar verás tu resultado y podrás revisar cada respuesta.</p>
+        </div>
+        <div class="exam-grid">
+          <article class="exam-card">
+            <div class="card-label">EVALUACIÓN · HOJA 1</div>
+            <h2>Spring y fundamentos web</h2>
+            <p>Restricciones SQL, inyección de dependencias, solicitudes HTTP, contenido y autenticación.</p>
+            <div class="card-meta">11 preguntas de práctica · Sin temporizador</div>
+            <button class="btn" type="button" data-start="sheet1">Empezar simulacro <span aria-hidden="true">→</span></button>
+          </article>
+          <article class="exam-card">
+            <div class="card-label">EVALUACIÓN · HOJA 2</div>
+            <h2>Spring, JWT y APIs</h2>
+            <p>Programación programada, colas, ciclo de vida JWT, Swagger y procedimientos almacenados.</p>
+            <div class="card-meta">13 preguntas de práctica · Sin temporizador</div>
+            <button class="btn" type="button" data-start="sheet2">Empezar simulacro <span aria-hidden="true">→</span></button>
+          </article>
+        </div>
+        <aside class="reserved-card">
+          <span class="reserved-icon" aria-hidden="true">ⓘ</span>
+          <div><strong>Hoja 1 · Pregunta 12</strong><p>Información insuficiente para generar simulación. No se incluye en el simulacro ni en el puntaje.</p></div>
+        </aside>
+        <p class="instructions">Modo simulacro: responde todo antes de ver la corrección. Puedes avanzar y volver a tus respuestas; no hay límite de tiempo.</p>
+      </section>
+
+      <section id="quiz-view" class="view" hidden>
+        <div class="quiz-head">
+          <button class="text-button" type="button" id="quit-button">← Volver a las evaluaciones</button>
+          <span class="eyebrow" id="quiz-title"></span>
+        </div>
+        <div class="progress-info"><span id="question-count"></span><span id="answered-count"></span></div>
+        <div class="progress-track" role="progressbar" aria-label="Progreso del simulacro" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-track">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div id="question-container"></div>
+        <nav class="quiz-nav" aria-label="Navegación de preguntas">
+          <button class="btn secondary" type="button" id="previous-button">← Anterior</button>
+          <div class="nav-right">
+            <button class="btn secondary" type="button" id="next-button">Siguiente →</button>
+            <button class="btn" type="button" id="finish-button" hidden>Finalizar simulacro</button>
+          </div>
+        </nav>
+      </section>
+
+      <section id="results-view" class="view" hidden>
+        <div id="results-container"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const makeField = (label, placeholder, checks, multiline = false) => ({ label, placeholder, checks, multiline });
+    const has = (...terms) => terms;
+
+    const exams = {
+      sheet1: {
+        title: "Hoja 1",
+        questions: [
+          {
+            prompt: "Escriba la sentencia SQL que crea una restricción de validación para el campo ESTADO de PPOOII.VEHICULO, que solo permita ACTIVO, HABILITADO, POR VERIFICAR y BLOQUEADO.",
+            hint: "Escribe la sentencia SQL completa.",
+            fields: [makeField("Sentencia SQL", "ALTER TABLE ...", [
+              has("alter table"), has("ppooii.vehiculo", "vehiculo"), has("add constraint", "constraint"),
+              has("check"), has("activo"), has("habilitado"), has("por verificar"), has("bloqueado")
+            ], true)],
+            expected: "ALTER TABLE PPOOII.VEHICULO ADD CONSTRAINT chk_estado CHECK (ESTADO IN ('ACTIVO','HABILITADO','POR VERIFICAR','BLOQUEADO'));",
+            explanation: "La restricción CHECK limita los valores permitidos para ESTADO."
+          },
+          {
+            prompt: "Complete: cuando se necesita más control del proceso de inyección de dependencia y se quiere elegir cuál bean conectar con una propiedad, ¿qué anotación se agrega junto con @Autowired?",
+            fields: [makeField("Anotación", "@...", [has("@qualifier")])],
+            expected: "@Qualifier",
+            explanation: "@Qualifier identifica cuál bean debe inyectarse cuando hay más de una opción."
+          },
+          {
+            prompt: "¿Qué sentencia SQL permite verificar la definición del procedimiento almacenado PPOOII.VALIDAR_DATOS_CARGUE(IN ID_CARGUE DOUBLE) en MySQL?",
+            fields: [makeField("Sentencia SQL", "SHOW CREATE PROCEDURE ...", [
+              has("show create procedure"), has("ppooii.validar_datos_cargue", "validar_datos_cargue")
+            ])],
+            expected: "SHOW CREATE PROCEDURE PPOOII.VALIDAR_DATOS_CARGUE;",
+            explanation: "SHOW CREATE PROCEDURE muestra la definición del procedimiento almacenado."
+          },
+          {
+            prompt: "Complete las anotaciones para una solicitud GET: asignar la ruta, recuperar un valor de la URL (por ejemplo, un identificador) y vincular parámetros de solicitud al método del controlador.",
+            hint: "Escribe una anotación en cada espacio, en el orden descrito.",
+            fields: [
+              makeField("1 · Asignar la ruta GET", "@...", [has("@getmapping", "@requestmapping")]),
+              makeField("2 · Recuperar un valor de la ruta", "@...", [has("@pathvariable")]),
+              makeField("3 · Vincular parámetros de solicitud", "@...", [has("@requestparam")])
+            ],
+            expected: "@GetMapping (o @RequestMapping), @PathVariable, @RequestParam",
+            explanation: "@GetMapping (o @RequestMapping) asigna una ruta; @PathVariable recupera valores de la ruta y @RequestParam vincula parámetros de consulta."
+          },
+          {
+            prompt: "¿Qué anotación vincula un parámetro del método del controlador al valor del cuerpo de la solicitud HTTP?",
+            fields: [makeField("Anotación", "@...", [has("@requestbody")])],
+            expected: "@RequestBody",
+            explanation: "@RequestBody enlaza el cuerpo HTTP con un parámetro del método."
+          },
+          {
+            prompt: "Mencione cinco grupos principales de Content-Type.",
+            hint: "Escribe cinco tipos separados por comas.",
+            fields: [makeField("Cinco grupos", "application, text, ...", [
+              has("application"), has("text"), has("image"), has("audio"), has("video")
+            ], true)],
+            expected: "application, text, image, audio, video",
+            explanation: "Estos son cinco tipos principales. También existen otros, como multipart, font, message y model."
+          },
+          {
+            prompt: "¿Qué anotación se usa a nivel de clase o método para asignar solicitudes web a clases y métodos de manejador?",
+            fields: [makeField("Anotación", "@...", [has("@requestmapping")])],
+            expected: "@RequestMapping",
+            explanation: "@RequestMapping puede declarar asignaciones de solicitudes en una clase o en métodos."
+          },
+          {
+            prompt: "¿Qué encabezado HTTP indica el tipo de medio del recurso enviado en el cuerpo y ayuda al destinatario a interpretar los datos?",
+            fields: [makeField("Encabezado HTTP", "...", [has("content-type")])],
+            expected: "Content-Type",
+            explanation: "Content-Type indica el tipo de medio del cuerpo del mensaje HTTP."
+          },
+          {
+            prompt: "¿A qué estándar de código abierto hace referencia la descripción de autorización mediante usuario, contraseña, proveedores externos o servicios como LDAP y Active Directory?",
+            fields: [makeField("Estándar", "OAuth ...", [
+              has("oauth 2.0", "oauth2", "openid connect", "oidc")
+            ])],
+            expected: "OAuth 2.0; para autenticación de identidad se usa OpenID Connect (OIDC) sobre OAuth 2.0.",
+            explanation: "OAuth 2.0 es el marco de autorización; OpenID Connect agrega una capa de autenticación e identidad."
+          },
+          {
+            prompt: "¿Qué anotación de nivel de método, junto con metadatos de activación, se usa para programar tareas y debe aplicarse a un método void sin parámetros?",
+            fields: [makeField("Anotación", "@...", [has("@scheduled")])],
+            expected: "@Scheduled",
+            explanation: "@Scheduled marca un método para ejecución programada; normalmente se habilita con @EnableScheduling."
+          },
+          {
+            prompt: "¿Qué anotación puede habilitar solicitudes de origen cruzado a nivel de clase o de método, por ejemplo, entre hosts distintos?",
+            fields: [makeField("Anotación", "@...", [has("@crossorigin")])],
+            expected: "@CrossOrigin",
+            explanation: "@CrossOrigin permite configurar solicitudes CORS en controladores o métodos."
+          }
+        ]
+      },
+      sheet2: {
+        title: "Hoja 2",
+        questions: [
+          {
+            prompt: "¿Qué anotación de nivel de método, junto con los metadatos de activación, se usa para programar tareas y debe aplicarse a un método void sin parámetros?",
+            fields: [makeField("Anotación", "@...", [has("@scheduled")])],
+            expected: "@Scheduled",
+            explanation: "@Scheduled se usa en métodos programados, normalmente con @EnableScheduling."
+          },
+          {
+            prompt: "¿Qué garantiza comunicación fiable y asíncrona entre componentes al mantener los mensajes en secuencia hasta que se reciben y procesan correctamente?",
+            fields: [makeField("Concepto", "Cola de ...", [
+              has("message queue", "cola de mensajes")
+            ])],
+            expected: "Cola de mensajes (Message Queue)",
+            explanation: "Una cola de mensajes conserva y entrega mensajes entre componentes de forma asíncrona."
+          },
+          {
+            prompt: "Complete los seis pasos del ciclo de vida de un token JWT entre la API y el servidor.",
+            hint: "En cada paso indica la dirección y qué ocurre. Usa tus propias palabras.",
+            fields: [
+              makeField("Paso 1", "API → Server: ...", [has("api"), has("server"), has("credencial", "usuario", "contraseña", "login", "iniciar sesion")], true),
+              makeField("Paso 2", "Entrada del Server: ...", [has("server"), has("valida", "validar", "credencial"), has("genera", "generar", "firma", "firmar", "jwt", "token")], true),
+              makeField("Paso 3", "Server → API: ...", [has("server"), has("api"), has("devuelve", "envia", "retorna", "entrega"), has("jwt", "token")], true),
+              makeField("Paso 4", "API → Server: ...", [has("api"), has("server"), has("authorization", "autorizacion", "bearer"), has("jwt", "token", "peticion", "solicitud")], true),
+              makeField("Paso 5", "Salida del Server: ...", [has("server"), has("valida", "validar", "verifica", "verificar"), has("firma", "expiracion", "expira", "token", "jwt"), has("procesa", "procesar", "recurso")], true),
+              makeField("Paso 6", "Server → API: ...", [has("server"), has("api"), has("respuesta", "recurso", "devuelve", "envia", "retorna")], true)
+            ],
+            expected: "1) API envía credenciales. 2) El servidor las valida y genera/firma el JWT. 3) El servidor devuelve el JWT. 4) La API envía una petición con Authorization: Bearer <token>. 5) El servidor valida firma y expiración y procesa la petición. 6) El servidor devuelve la respuesta o recurso protegido.",
+            explanation: "Se evalúan los seis pasos por separado: credenciales, emisión del token, envío, uso como Bearer, validación/procesamiento y respuesta."
+          },
+          {
+            prompt: "¿Cómo se llama el servidor que gestiona el flujo de mensajes entre productores y consumidores, almacena y enruta mensajes, y asegura su entrega? Ejemplos: RabbitMQ, Apache Kafka y Amazon SQS.",
+            fields: [makeField("Concepto", "... de mensajes", [
+              has("message broker", "broker de mensajes", "broker")
+            ])],
+            expected: "Message Broker (broker de mensajes)",
+            explanation: "El message broker recibe, enruta y entrega mensajes entre productores y consumidores."
+          },
+          {
+            prompt: "¿Qué anotación puede usarse a nivel de clase o método para asignar solicitudes web a clases y métodos de manejador?",
+            fields: [makeField("Anotación", "@...", [has("@requestmapping")])],
+            expected: "@RequestMapping",
+            explanation: "@RequestMapping define asignaciones de solicitudes para una clase o método."
+          },
+          {
+            prompt: "¿Qué anotación se usa en clases que definen beans, como una configuración Java equivalente a una configuración XML?",
+            fields: [makeField("Anotación", "@...", [has("@configuration")])],
+            expected: "@Configuration",
+            explanation: "@Configuration marca una clase fuente de definiciones de beans de Spring."
+          },
+          {
+            prompt: "Mencione cuatro beneficios de Swagger.",
+            hint: "Puedes separarlos por comas o escribir una lista.",
+            fields: [makeField("Cuatro beneficios", "Documentación, pruebas, ...", [
+              has("documentacion", "documentacion automatica", "documenta"),
+              has("prueba", "probar", "probar endpoints", "probar los endpoints"),
+              has("generacion de codigo", "genera codigo", "generar codigo", "codigo cliente", "codigo servidor"),
+              has("openapi", "estandarizacion", "estandar", "mantenimiento", "comunicacion entre equipos")
+            ], true)],
+            expected: "Documentación automática e interactiva; pruebas de endpoints; generación de código cliente/servidor; estandarización OpenAPI que facilita mantenimiento y colaboración.",
+            explanation: "Swagger facilita documentar y probar APIs, generar código y trabajar con la especificación OpenAPI."
+          },
+          {
+            prompt: "¿Qué anotación vincula un parámetro del método del controlador al valor del cuerpo de la solicitud HTTP?",
+            fields: [makeField("Anotación", "@...", [has("@requestbody")])],
+            expected: "@RequestBody",
+            explanation: "@RequestBody enlaza el cuerpo HTTP con un parámetro del método."
+          },
+          {
+            prompt: "¿Qué anotación solicita el valor de un encabezado HTTP y lo asigna a un parámetro del método del controlador?",
+            fields: [makeField("Anotación", "@...", [has("@requestheader")])],
+            expected: "@RequestHeader",
+            explanation: "@RequestHeader vincula el valor de un encabezado HTTP con un parámetro del método."
+          },
+          {
+            prompt: "Mencione la diferencia principal entre Postman y Swagger.",
+            fields: [makeField("Diferencia", "Postman ...; Swagger ...", [
+              has("probar", "consumir", "coleccion", "automatiz"),
+              has("document", "disenar", "openapi", "codigo")
+            ], true)],
+            expected: "Postman se usa para probar y consumir APIs; Swagger se usa para diseñar y documentar APIs, habitualmente mediante OpenAPI.",
+            explanation: "Postman se enfoca en solicitudes, colecciones y pruebas; Swagger en documentación interactiva y especificación/diseño de API."
+          },
+          {
+            prompt: "¿Qué anotación de Spring Data JPA permite llamar un procedimiento almacenado desde un método del repositorio?",
+            fields: [makeField("Anotación", "@...", [has("@procedure", "@namedstoredprocedurequery")])],
+            expected: "@Procedure (también puede usarse @NamedStoredProcedureQuery)",
+            explanation: "@Procedure se utiliza para invocar procedimientos almacenados desde Spring Data JPA."
+          },
+          {
+            prompt: "¿Cómo se llama el conjunto de herramientas y especificación abierta (antes conocido como Swagger) para describir y documentar APIs REST de forma legible por personas y máquinas?",
+            fields: [makeField("Especificación", "...", [has("openapi", "swagger")])],
+            expected: "OpenAPI (Swagger)",
+            explanation: "OpenAPI es la especificación estándar para describir APIs HTTP; Swagger es el conjunto de herramientas asociado."
+          },
+          {
+            prompt: "¿Qué encabezado HTTP indica el tipo de medio del recurso enviado en el cuerpo del mensaje?",
+            fields: [makeField("Encabezado HTTP", "...", [has("content-type")])],
+            expected: "Content-Type",
+            explanation: "Content-Type indica el tipo de medio del cuerpo HTTP."
+          }
+        ]
+      }
+    };
+
+    const homeView = document.getElementById("home-view");
+    const quizView = document.getElementById("quiz-view");
+    const resultsView = document.getElementById("results-view");
+    const questionContainer = document.getElementById("question-container");
+    const answers = {};
+    let activeExam = null;
+    let currentIndex = 0;
+
+    function normalize(value) {
+      return value.toLocaleLowerCase("es")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[’']/g, "").replace(/\s+/g, " ").trim();
+    }
+
+    function showView(name) {
+      homeView.hidden = name !== "home";
+      quizView.hidden = name !== "quiz";
+      resultsView.hidden = name !== "results";
+    }
+
+    function startExam(id) {
+      activeExam = exams[id];
+      currentIndex = 0;
+      answers[id] = activeExam.questions.map(question => question.fields.map(() => ""));
+      document.getElementById("quiz-title").textContent = activeExam.title + " · Simulacro";
+      showView("quiz");
+      renderQuestion();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function renderQuestion() {
+      const question = activeExam.questions[currentIndex];
+      const count = activeExam.questions.length;
+      document.getElementById("question-count").textContent = "Pregunta " + (currentIndex + 1) + " de " + count;
+      const answered = answers[Object.keys(exams).find(key => exams[key] === activeExam)]
+        .filter(row => row.some(value => value.trim().length > 0)).length;
+      document.getElementById("answered-count").textContent = answered + " de " + count + " respondidas";
+      const percent = Math.round(((currentIndex + 1) / count) * 100);
+      document.getElementById("progress-fill").style.width = percent + "%";
+      document.getElementById("progress-track").setAttribute("aria-valuenow", String(percent));
+      const badge = activeExam.title === "Hoja 1" ? "Pregunta " + (currentIndex + 1) : "Pregunta " + (currentIndex + 1);
+      const fields = question.fields.map((field, fieldIndex) => {
+        const value = answers[Object.keys(exams).find(key => exams[key] === activeExam)][currentIndex][fieldIndex];
+        const id = "answer-" + fieldIndex;
+        const input = field.multiline ? "textarea" : "input";
+        const type = field.multiline ? "" : ' type="text"';
+        const placeholder = field.placeholder ? ' placeholder="' + field.placeholder.replace(/"/g, "&quot;") + '"' : "";
+        const savedValue = field.multiline ? "" : ' value="' + escapeHtml(value) + '"';
+        const content = field.multiline ? escapeHtml(value) : "";
+        return '<div class="answer-field"><label for="' + id + '">' + escapeHtml(field.label) + '</label><' + input + type + ' class="text-answer" id="' + id + '"' + placeholder + savedValue + ' autocomplete="off">' + content + '</' + input + '></div>';
+      }).join("");
+      questionContainer.innerHTML =
+        '<article class="question-card"><span class="question-number">' + badge + '</span>' +
+        '<h2>' + escapeHtml(question.prompt) + '</h2>' +
+        (question.hint ? '<p class="question-hint">' + escapeHtml(question.hint) + '</p>' : '') +
+        '<div class="answer-list">' + fields + '</div></article>';
+
+      question.fields.forEach((field, fieldIndex) => {
+        const input = document.getElementById("answer-" + fieldIndex);
+        input.addEventListener("input", () => {
+          answers[Object.keys(exams).find(key => exams[key] === activeExam)][currentIndex][fieldIndex] = input.value;
+          updateAnsweredCount();
+        });
+      });
+
+      document.getElementById("previous-button").disabled = currentIndex === 0;
+      document.getElementById("next-button").hidden = currentIndex === count - 1;
+      document.getElementById("finish-button").hidden = currentIndex !== count - 1;
+    }
+
+    function updateAnsweredCount() {
+      const id = Object.keys(exams).find(key => exams[key] === activeExam);
+      const answered = answers[id].filter(row => row.some(value => value.trim().length > 0)).length;
+      document.getElementById("answered-count").textContent = answered + " de " + activeExam.questions.length + " respondidas";
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[char]);
+    }
+
+    function gradeField(value, checks) {
+      const answer = normalize(value);
+      return checks.map(acceptable => acceptable.some(term => answer.includes(normalize(term))));
+    }
+
+    function finishExam() {
+      const id = Object.keys(exams).find(key => exams[key] === activeExam);
+      const results = activeExam.questions.map((question, questionIndex) => {
+        const fields = question.fields.map((field, fieldIndex) => ({
+          label: field.label,
+          value: answers[id][questionIndex][fieldIndex],
+          checks: gradeField(answers[id][questionIndex][fieldIndex], field.checks)
+        }));
+        const correct = fields.every(field => field.checks.every(Boolean));
+        return { question, fields, correct };
+      });
+      const correctCount = results.filter(result => result.correct).length;
+      renderResults(results, correctCount);
+      showView("results");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function renderResults(results, correctCount) {
+      const total = results.length;
+      const percentage = total ? Math.round((correctCount / total) * 100) : 0;
+      const grade = (5 * (correctCount / total)).toFixed(1);
+      const message = percentage >= 85 ? "¡Excelente trabajo!" : percentage >= 60 ? "Vas por buen camino." : "Repasa las respuestas y vuelve a intentarlo.";
+      const cards = results.map((result, index) => {
+        const review = result.fields.map(field => {
+          const complete = field.checks.every(Boolean);
+          return '<div class="review-line"><strong>' + escapeHtml(field.label) + ' · ' + (complete ? "Completa" : "Revisar") + '</strong>' +
+            '<span>Tu respuesta: ' + (field.value.trim() ? escapeHtml(field.value) : '<em>Sin responder</em>') + '</span></div>';
+        }).join("");
+        return '<article class="result-card ' + (result.correct ? "correct" : "incorrect") + '">' +
+          '<div class="result-title"><span>' + (index + 1) + '. ' + escapeHtml(result.question.prompt) + '</span>' +
+          '<span>' + (result.correct ? "Correcta" : "Revisar") + '</span></div>' +
+          '<p><strong>Respuesta esperada:</strong> ' + escapeHtml(result.question.expected) + '</p>' +
+          '<p>' + escapeHtml(result.question.explanation) + '</p>' + review + '</article>';
+      }).join("");
+      document.getElementById("results-container").innerHTML =
+        '<div class="panel"><div class="eyebrow">' + escapeHtml(activeExam.title) + ' · RESULTADOS</div>' +
+        '<h1>' + message + '</h1><p class="lead">Terminaste el simulacro. Revisa tus respuestas y los conceptos que puedes reforzar.</p>' +
+        '<div class="score-row"><div><div class="score-label">Tu nota final</div><div class="score-number">' + grade + '<span style="font-size:22px;letter-spacing:0"> / 5.0</span></div></div>' +
+        '<div class="score-copy"><strong>' + percentage + '% · ' + correctCount + ' de ' + total + ' preguntas correctas</strong><br>El resultado es una guía de práctica, no una calificación oficial.' +
+        '<div class="scale-note">Cada pregunta vale lo mismo. Nota: 5 × (preguntas correctas ÷ total de preguntas).</div></div></div>' +
+        '<div class="progress-track" role="img" aria-label="Resultado: ' + percentage + ' por ciento"><div class="progress-fill" style="width:' + percentage + '%"></div></div>' +
+        '<div class="result-list">' + cards + '</div>' +
+        '<div class="result-actions"><button class="btn" type="button" id="retry-button">Repetir esta evaluación</button>' +
+        '<button class="btn secondary" type="button" id="home-button">Elegir otra evaluación</button></div>' +
+        '<p class="notice">La corrección automática busca conceptos clave. Una respuesta correcta expresada con otras palabras podría no marcarse como correcta.</p></div>';
+      document.getElementById("retry-button").addEventListener("click", () => {
+        const id = Object.keys(exams).find(key => exams[key] === activeExam);
+        startExam(id);
+      });
+      document.getElementById("home-button").addEventListener("click", () => showView("home"));
+    }
+
+    document.querySelectorAll("[data-start]").forEach(button => {
+      button.addEventListener("click", () => startExam(button.dataset.start));
+    });
+    document.getElementById("home-link").addEventListener("click", event => {
+      event.preventDefault();
+      showView("home");
+    });
+    document.getElementById("quit-button").addEventListener("click", () => showView("home"));
+    document.getElementById("previous-button").addEventListener("click", () => {
+      if (currentIndex > 0) { currentIndex -= 1; renderQuestion(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+    });
+    document.getElementById("next-button").addEventListener("click", () => {
+      if (currentIndex < activeExam.questions.length - 1) { currentIndex += 1; renderQuestion(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+    });
+    document.getElementById("finish-button").addEventListener("click", finishExam);
+  </script>
+</body>
+</html>
